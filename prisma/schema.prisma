@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  uid       String   @unique @default(cuid())
+  username  String
+  email     String
+  firstname String
+  lastname  String
+  nicename  String
+  password  String
+  type      String   @default("User")
+  status    String   @default("Active")
+  language  String   @default("en")
+  metas     Json?    @default("{}")
+  created   DateTime @default(now())
+  modified  DateTime @default(now())
+
+  agent    Agent[]
+  chats    Chat[]
+  threads  Thread[]
+  messages Message[]
+
+  @@map("user")
+}
+
+model Attachment {
+  id         Int      @id @default(autoincrement())
+  slug       String   @unique
+  name       String   @default("")
+  attachment String   @default("")
+  url        String   @default("")
+  mime       String   @default("")
+  size       Int      @default(0)
+  source     String   @default("")
+  acl        String   @default("")
+  metas      Json?    @default("{}")
+  created    DateTime @default(now())
+  modified   DateTime @default(now())
+
+  @@map("attachment")
+}
+
+model Agent {
+  id          Int      @id @default(autoincrement())
+  uid         String   @unique @default(cuid())
+  idUser      Int      @map("id_user")
+  name        String   @default("New Agent")
+  description String   @default("")
+  status      String   @default("Active")
+  metas       Json?    @default("{}")
+  created     DateTime @default(now())
+  modified    DateTime @default(now())
+
+  user     User     @relation(fields: [idUser], references: [id])
+  entities Entity[]
+
+  @@map("agent")
+}
+
+model Chat {
+  id       Int      @id @default(autoincrement())
+  uid      String   @unique @default(cuid())
+  idUser   Int      @map("id_user")
+  status   String   @default("Active")
+  metas    Json?    @default("{}")
+  created  DateTime @default(now())
+  modified DateTime @default(now())
+
+  user     User      @relation(fields: [idUser], references: [id])
+  threads  Thread[]
+  messages Message[]
+
+  @@map("chat")
+}
+
+model Thread {
+  id       Int      @id @default(autoincrement())
+  uid      String   @unique @default(cuid())
+  idChat   Int      @map("id_chat")
+  idUser   Int      @map("id_user")
+  status   String   @default("Active")
+  metas    Json?    @default("{}")
+  created  DateTime @default(now())
+  modified DateTime @default(now())
+
+  chat     Chat      @relation(fields: [idChat], references: [id])
+  user     User      @relation(fields: [idUser], references: [id])
+  messages Message[]
+
+  @@map("thread")
+}
+
+model Message {
+  id       Int      @id @default(autoincrement())
+  uid      String   @unique @default(cuid())
+  idChat   Int      @map("id_chat")
+  idThread Int      @map("id_thread")
+  idUser   Int      @map("id_user")
+  text     String   @default("") @db.LongText
+  role     String   @default("")
+  status   String   @default("Active")
+  metas    Json?    @default("{}")
+  created  DateTime @default(now())
+  modified DateTime @default(now())
+
+  chat   Chat   @relation(fields: [idChat], references: [id])
+  thread Thread @relation(fields: [idThread], references: [id])
+  user   User   @relation(fields: [idUser], references: [id])
+
+  @@map("message")
+}
+
+model Entity {
+  id          Int      @id @default(autoincrement())
+  uid         String   @unique @default(cuid())
+  idAgent     Int      @map("id_agent")
+  name        String
+  description String
+  structure   Json?    @default("{}")
+  status      String   @default("Active")
+  metas       Json?    @default("{}")
+  created     DateTime @default(now())
+  modified    DateTime @default(now())
+
+  agent Agent @relation(fields: [idAgent], references: [id])
+
+  @@map("entity")
+}

@@ -1,0 +1,274 @@
+### Basic Message
+POST http://localhost:1337/ai/message
+Authorization:
+Content-Type: application/json
+
+{
+	"prompt": "Tell me about the latest iPhone",
+	"system": "You are a tech expert who specializes in Apple products",
+	"stream": true
+}
+
+### Structured Output - Recipe Example
+POST http://localhost:1337/ai/message
+Content-Type: application/json
+
+{
+	"prompt": "Give me 3 cookie recipes",
+	"system": "You are a professional pastry chef",
+	"stream": false,
+	"responseSchema": {
+		"type": "ARRAY",
+		"items": {
+			"type": "OBJECT",
+			"properties": {
+				"name": {
+					"type": "STRING"
+				},
+				"ingredients": {
+					"type": "ARRAY",
+					"items": {
+						"type": "STRING"
+					}
+				},
+				"instructions": {
+					"type": "ARRAY",
+					"items": {
+						"type": "STRING"
+					}
+				},
+				"prepTime": {
+					"type": "STRING"
+				},
+				"difficulty": {
+					"type": "STRING"
+				}
+			}
+		}
+	}
+}
+
+### Function Calling - Smart Home Example
+POST http://localhost:1337/ai/message
+Authorization:
+Content-Type: application/json
+
+{
+	"prompt": "Turn on the lights in the living room and set them to warm color",
+	"system": "You are a smart home assistant",
+	"stream": false,
+	"tools": [
+		{
+			"function_declarations": [
+				{
+					"name": "control_lights",
+					"description": "Control the smart lights in the house",
+					"parameters": {
+						"type": "OBJECT",
+						"properties": {
+							"room": {
+								"type": "STRING",
+								"description": "The room where the lights are located"
+							},
+							"state": {
+								"type": "STRING",
+								"enum": [
+									"on",
+									"off"
+								],
+								"description": "Whether to turn the lights on or off"
+							},
+							"color": {
+								"type": "STRING",
+								"enum": [
+									"warm",
+									"cool",
+									"daylight"
+								],
+								"description": "The color temperature of the lights"
+							},
+							"brightness": {
+								"type": "INTEGER",
+								"minimum": 0,
+								"maximum": 100,
+								"description": "The brightness level from 0 to 100"
+							}
+						},
+						"required": [
+							"room",
+							"state"
+						]
+					}
+				}
+			]
+		}
+	]
+}
+
+### Google Search Grounding - Current Events
+POST http://localhost:1337/ai/message
+Authorization:
+Content-Type: application/json
+
+{
+	"system": "You are a tech journalist who specializes in AI",
+	"prompt": "What are the latest developments in AI technology?",
+	"stream": false,
+	"searchConfig": {
+		"mode": "MODE_DYNAMIC",
+		"dynamic_threshold": 0.7
+	}
+}
+
+### Structured Data Analysis
+POST http://localhost:1337/ai/message
+Authorization:
+Content-Type: application/json
+
+{
+	"prompt": "Analyze this user data and give me key insights",
+	"system": "You are a data analyst",
+	"stream": false,
+	"responseSchema": {
+		"type": "OBJECT",
+		"properties": {
+			"insights": {
+				"type": "ARRAY",
+				"items": {
+					"type": "OBJECT",
+					"properties": {
+						"category": {
+							"type": "STRING"
+						},
+						"finding": {
+							"type": "STRING"
+						},
+						"recommendation": {
+							"type": "STRING"
+						},
+						"impact": {
+							"type": "STRING",
+							"enum": [
+								"high",
+								"medium",
+								"low"
+							]
+						}
+					}
+				}
+			},
+			"summary": {
+				"type": "STRING"
+			}
+		}
+	},
+	"properties": {
+		"userData": [
+			{
+				"id": 1,
+				"activity": "exercise",
+				"duration": 30,
+				"frequency": "daily"
+			},
+			{
+				"id": 2,
+				"activity": "meditation",
+				"duration": 15,
+				"frequency": "weekly"
+			},
+			{
+				"id": 3,
+				"activity": "reading",
+				"duration": 45,
+				"frequency": "daily"
+			}
+		]
+	}
+}
+
+### Translation with Formatting
+POST http://localhost:1337/ai/message
+Authorization:
+Content-Type: application/json
+
+{
+	"prompt": "Translate this text to Spanish and format it as a formal letter",
+	"system": "You are a professional translator",
+	"stream": false,
+	"text": "Dear Mr. Smith, I hope this letter finds you well. I am writing to discuss our upcoming project...",
+	"responseSchema": {
+		"type": "OBJECT",
+		"properties": {
+			"translation": {
+				"type": "STRING"
+			},
+			"formattedLetter": {
+				"type": "OBJECT",
+				"properties": {
+					"salutation": {
+						"type": "STRING"
+					},
+					"body": {
+						"type": "ARRAY",
+						"items": {
+							"type": "STRING"
+						}
+					},
+					"closing": {
+						"type": "STRING"
+					}
+				}
+			}
+		}
+	}
+}
+
+### Weather Analysis with Search and Structure
+POST http://localhost:1337/ai/message
+Authorization:
+Content-Type: application/json
+
+{
+	"prompt": "What's the weather like in New York today and should I plan outdoor activities?",
+	"stream": false,
+	"searchConfig": {
+		"mode": "MODE_DYNAMIC",
+		"dynamic_threshold": 0.9
+	},
+	"responseSchema": {
+		"type": "OBJECT",
+		"properties": {
+			"weather": {
+				"type": "OBJECT",
+				"properties": {
+					"temperature": {
+						"type": "STRING"
+					},
+					"conditions": {
+						"type": "STRING"
+					},
+					"precipitation": {
+						"type": "STRING"
+					}
+				}
+			},
+			"recommendation": {
+				"type": "OBJECT",
+				"properties": {
+					"outdoorActivities": {
+						"type": "BOOLEAN"
+					},
+					"reasoning": {
+						"type": "STRING"
+					},
+					"suggestedActivities": {
+						"type": "ARRAY",
+						"items": {
+							"type": "STRING"
+						}
+					}
+				}
+			}
+		}
+	}
+}
