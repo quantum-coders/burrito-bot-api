@@ -23,7 +23,6 @@ model User {
   created   DateTime @default(now())
   modified  DateTime @default(now())
 
-  agent    Agent[]
   chats    Chat[]
   threads  Thread[]
   messages Message[]
@@ -46,23 +45,6 @@ model Attachment {
   modified   DateTime @default(now())
 
   @@map("attachment")
-}
-
-model Agent {
-  id          Int      @id @default(autoincrement())
-  uid         String   @unique @default(cuid())
-  idUser      Int      @map("id_user")
-  name        String   @default("New Agent")
-  description String   @default("")
-  status      String   @default("Active")
-  metas       Json?    @default("{}")
-  created     DateTime @default(now())
-  modified    DateTime @default(now())
-
-  user     User     @relation(fields: [idUser], references: [id])
-  entities Entity[]
-
-  @@map("agent")
 }
 
 model Chat {
@@ -116,21 +98,4 @@ model Message {
   user   User   @relation(fields: [idUser], references: [id])
 
   @@map("message")
-}
-
-model Entity {
-  id          Int      @id @default(autoincrement())
-  uid         String   @unique @default(cuid())
-  idAgent     Int      @map("id_agent")
-  name        String
-  description String
-  structure   Json?    @default("{}")
-  status      String   @default("Active")
-  metas       Json?    @default("{}")
-  created     DateTime @default(now())
-  modified    DateTime @default(now())
-
-  agent Agent @relation(fields: [idAgent], references: [id])
-
-  @@map("entity")
 }
