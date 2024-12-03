@@ -10,11 +10,12 @@ datasource db {
 model User {
   id        Int      @id @default(autoincrement())
   uid       String   @unique @default(cuid())
-  username  String
-  email     String
-  firstname String
-  lastname  String
-  nicename  String
+  username  String   @unique
+  email     String   @unique
+  firstname String   @default("")
+  lastname  String   @default("")
+  nicename  String   @default("")
+  wallet    String   @unique @default("0x")
   password  String
   type      String   @default("User")
   status    String   @default("Active")

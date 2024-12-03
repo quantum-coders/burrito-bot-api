@@ -1,4 +1,4 @@
-import primate, { jwt, PrimateService } from '@thewebchimp/primate';
+import primate, {jwt, PrimateService} from '@thewebchimp/primate';
 import bcrypt from 'bcrypt';
 
 class UserService {
@@ -9,7 +9,19 @@ class UserService {
 	 * @returns {Promise<User>} - A promise that resolves to the user object.
 	 */
 	static async findByEmail(email) {
-		return PrimateService.findBy('user', { username: email });
+		return PrimateService.findBy('user', {username: email});
+	}
+
+	static async findByWallet(wallet) {
+		if (!wallet) throw new Error('Invalid wallet address');
+
+		try {
+			return primate.prisma.user.findFirst({
+				where: {wallet},
+			});
+		} catch (e) {
+			throw e;
+		}
 	}
 
 	/**
@@ -22,18 +34,18 @@ class UserService {
 		try {
 			// Business Logic
 
-			if(data.password) data.password = bcrypt.hashSync(data.password, 8);
+			if (data.password) data.password = bcrypt.hashSync(data.password, 8);
 
 			// if we receive username or email, we use one as the other
-			if(data.username && !data.email) data.email = data.username;
-			else if(data.email && !data.username) data.username = data.email;
+			if (data.username && !data.email) data.email = data.username;
+			else if (data.email && !data.username) data.username = data.email;
 
 			// If we receive firstname or lastname, we use them to create nicename
-			if(data.firstname && data.lastname) data.nicename = data.firstname + ' ' + data.lastname;
+			if (data.firstname && data.lastname) data.nicename = data.firstname + ' ' + data.lastname;
 
 			// Primate Create
 			return PrimateService.create('user', data);
-		} catch(e) {
+		} catch (e) {
 			throw e;
 		}
 	}
@@ -48,7 +60,7 @@ class UserService {
 	 */
 	static async update(id, data, options = {}) {
 
-		if(data.password) data.password = bcrypt.hashSync(data.password, 8);
+		if (data.password) data.password = bcrypt.hashSync(data.password, 8);
 		else delete data.password;
 
 		return PrimateService.update('user', id, data);

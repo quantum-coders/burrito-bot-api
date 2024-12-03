@@ -1,9 +1,59 @@
-import { PrimateService, PrimateController, jwt } from '@thewebchimp/primate';
+import primate, {PrimateService, PrimateController, jwt} from '@thewebchimp/primate';
 import UserService from '#entities/users/user.service.js';
 import queryString from 'query-string';
 import axios from 'axios';
 
 class UserController extends PrimateController {
+
+	static async authenticate(req, res, next) {
+		try {
+			const {wallet} = req.body;
+			let message = 'User authenticated successfully';
+
+			// check for valid wallet address with regex
+			if (!wallet || !/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+				return res.respond({
+					status: 400,
+					message: 'Error: Invalid wallet address',
+				});
+			}
+
+			let user = await UserService.findByWallet(wallet);
+
+			if (!user) {
+				user = await primate.prisma.user.create({
+					data: {
+						wallet,
+						type: 'User',
+						email: wallet,
+						username: wallet,
+						status: 'Active',
+						password: '',
+					}
+				});
+
+				message = 'User created successfully';
+			}
+
+			// Firmar un JWT para el usuario
+			const token = await jwt.signAccessToken(user);
+
+			return res.respond({
+				data: user,
+				props: {token},
+				message,
+			});
+		} catch (e) {
+
+			console.log(e);
+
+			return res.respond({
+				status: 400,
+				message: 'Error creating user: ' + e.message,
+			});
+		}
+	};
+
 
 	/**
 	 * Updates a user's profile with the given data.
@@ -21,9 +71,9 @@ class UserController extends PrimateController {
 		try {
 			const idUser = req.params.id;
 
-			if(idUser === 'me') {
-				if(!req.user || !req.user.payload || !req.user.payload.id) {
-					return res.respond({ status: 401, message: 'Unauthorized' });
+			if (idUser === 'me') {
+				if (!req.user || !req.user.payload || !req.user.payload.id) {
+					return res.respond({status: 401, message: 'Unauthorized'});
 				}
 				req.params.id = req.user.payload.id;
 			}
@@ -35,9 +85,9 @@ class UserController extends PrimateController {
 				message: 'User updated successfully',
 			});
 
-		} catch(e) {
+		} catch (e) {
 			console.error(e);
-			return res.respond({ status: 400, message: 'User update error: ' + e.message });
+			return res.respond({status: 400, message: 'User update error: ' + e.message});
 		}
 	}
 
@@ -55,8 +105,8 @@ class UserController extends PrimateController {
 	 */
 	static async me(req, res) {
 		try {
-			if(!req.user || !req.user.payload || !req.user.payload.id) {
-				return res.respond({ status: 401, message: 'Unauthorized' });
+			if (!req.user || !req.user.payload || !req.user.payload.id) {
+				return res.respond({status: 401, message: 'Unauthorized'});
 			}
 
 			// Get user from req
@@ -65,8 +115,8 @@ class UserController extends PrimateController {
 			/** @type {User} */
 			const user = await PrimateService.findById('user', signedUser.id);
 
-			if(!user) {
-				return res.respond({ status: 404, message: 'User not found' });
+			if (!user) {
+				return res.respond({status: 404, message: 'User not found'});
 			}
 
 			// delete password
@@ -77,9 +127,9 @@ class UserController extends PrimateController {
 				message: 'User retrieved successfully',
 			});
 
-		} catch(e) {
+		} catch (e) {
 			console.error(e);
-			return res.respond({ status: 400, message: 'User me error: ' + e.message });
+			return res.respond({status: 400, message: 'User me error: ' + e.message});
 		}
 	};
 
@@ -106,7 +156,7 @@ class UserController extends PrimateController {
 			prompt: 'consent',
 		});
 
-		const googleLoginUrl = `https://accounts.google.com/o/oauth2/v2/auth?${ params }`;
+		const googleLoginUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 
 		res.redirect(googleLoginUrl);
 	};
@@ -128,7 +178,7 @@ class UserController extends PrimateController {
 		// Get the code from body
 		const code = req.body.code;
 
-		if(code) {
+		if (code) {
 
 			let token;
 
@@ -141,7 +191,7 @@ class UserController extends PrimateController {
 					grant_type: 'authorization_code',
 					code,
 				});
-			} catch(e) {
+			} catch (e) {
 				console.error(e);
 				return res.respond({
 					status: 400,
@@ -158,10 +208,10 @@ class UserController extends PrimateController {
 				// get user info
 				userInfo = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo?alt=json', {
 					headers: {
-						Authorization: `Bearer ${ accessToken }`,
+						Authorization: `Bearer ${accessToken}`,
 					},
 				});
-			} catch(e) {
+			} catch (e) {
 				console.error(e);
 				return res.respond({
 					status: 400,
@@ -174,7 +224,7 @@ class UserController extends PrimateController {
 			let user = await UserService.findByEmail(userInfo.data.email);
 
 			// If the user does not exist, create the user
-			if(!user) {
+			if (!user) {
 				user = await UserService.create({
 					email: userInfo.data.email,
 					username: userInfo.data.email,
@@ -186,9 +236,9 @@ class UserController extends PrimateController {
 			}
 
 			// If user exists
-			if(user) {
+			if (user) {
 				// If the user is not active
-				if(user.status !== 'Active') {
+				if (user.status !== 'Active') {
 					return res.respond({
 						status: 401,
 						result: 'error',
@@ -236,7 +286,7 @@ class UserController extends PrimateController {
 	 */
 	static async avatar(req, res) {
 
-		if(!req.params.id) throw new Error('No user id provided');
+		if (!req.params.id) throw new Error('No user id provided');
 
 		// Get query params for width and height
 		const {
@@ -253,9 +303,9 @@ class UserController extends PrimateController {
 		} = req.query;
 
 		// Set options
-		const options = { size, width, height, bold, background, color, fontSize, border, chars };
+		const options = {size, width, height, bold, background, color, fontSize, border, chars};
 
-		if(mode === 'dark') {
+		if (mode === 'dark') {
 			options.background = '000000';
 			options.color = 'FFFFFF';
 		}
@@ -270,20 +320,20 @@ class UserController extends PrimateController {
 			let attachment;
 
 			// check if we got user.metas.idAvatar
-			if(user.metas?.idAvatar) {
+			if (user.metas?.idAvatar) {
 				// get the attachment
 				try {
 
 					/** @type {Attachment} */
 					attachment = await PrimateService.findById('attachment', user.metas.idAvatar);
 
-				} catch(e) {
+				} catch (e) {
 					console.error('Error getting attachment:', e);
 				}
 			}
 
 			// if we have an attachment, return the location of the attachment
-			if(attachment && attachment.metas?.location) {
+			if (attachment && attachment.metas?.location) {
 
 				res.redirect(attachment.metas.location);
 
@@ -296,17 +346,17 @@ class UserController extends PrimateController {
 				initials = initials.trim();
 
 				// if the initials are empty, use username
-				if(!initials) initials = user.username;
+				if (!initials) initials = user.username;
 
 				// if still empty, use NA
-				if(!initials) initials = 'NA';
+				if (!initials) initials = 'NA';
 
-				res.redirect(`https://ui-avatars.com/api/?name=${ initials }&${ query }`);
+				res.redirect(`https://ui-avatars.com/api/?name=${initials}&${query}`);
 			}
-		} catch(e) {
+		} catch (e) {
 
 			console.error('Error getting avatar, using fallback:', e);
-			res.redirect(`https://ui-avatars.com/api/?name=NA&${ query }`);
+			res.redirect(`https://ui-avatars.com/api/?name=NA&${query}`);
 		}
 	};
 
@@ -325,15 +375,15 @@ class UserController extends PrimateController {
 	 */
 	static async getAgents(req, res) {
 		const user = await UserController.validateMe(req);
-		if(!user) return res.respond({ status: 401, message: 'User not found or error fetching user' });
+		if (!user) return res.respond({status: 401, message: 'User not found or error fetching user'});
 
 		try {
 			const agents = await UserService.getAgents(user.id);
-			return res.respond({ data: agents, message: 'Agents retrieved successfully' });
+			return res.respond({data: agents, message: 'Agents retrieved successfully'});
 
-		} catch(e) {
+		} catch (e) {
 			console.error(e);
-			return res.respond({ status: 400, message: 'Error getting agents: ' + e.message });
+			return res.respond({status: 400, message: 'Error getting agents: ' + e.message});
 		}
 	}
 
@@ -352,7 +402,7 @@ class UserController extends PrimateController {
 
 		/** @type {User} */
 		const user = await PrimateService.findById('user', signedUser.id);
-		if(!user) return false;
+		if (!user) return false;
 
 		// delete password
 		delete user.password;
@@ -374,15 +424,15 @@ class UserController extends PrimateController {
 	 */
 	static async createAgent(req, res) {
 		const user = await UserController.validateMe(req);
-		if(!user) return res.respond({ status: 401, message: 'User not found or error fetching user' });
+		if (!user) return res.respond({status: 401, message: 'User not found or error fetching user'});
 
 		try {
 			const agent = await UserService.createAgent(user.id, req.body);
-			return res.respond({ data: agent, message: 'Agent created successfully' });
+			return res.respond({data: agent, message: 'Agent created successfully'});
 
-		} catch(e) {
+		} catch (e) {
 			console.error(e);
-			return res.respond({ status: 400, message: 'Error creating agent: ' + e.message });
+			return res.respond({status: 400, message: 'Error creating agent: ' + e.message});
 		}
 	}
 
@@ -401,15 +451,15 @@ class UserController extends PrimateController {
 	 */
 	static async getAgent(req, res) {
 		const user = await UserController.validateMe(req);
-		if(!user) return res.respond({ status: 401, message: 'User not found or error fetching user' });
+		if (!user) return res.respond({status: 401, message: 'User not found or error fetching user'});
 
 		try {
 			const agent = await UserService.getAgent(user.id, parseInt(req.params.idAgent));
-			return res.respond({ data: agent, message: 'Agent retrieved successfully' });
+			return res.respond({data: agent, message: 'Agent retrieved successfully'});
 
-		} catch(e) {
+		} catch (e) {
 			console.error(e);
-			return res.respond({ status: 400, message: 'Error getting agent: ' + e.message });
+			return res.respond({status: 400, message: 'Error getting agent: ' + e.message});
 		}
 	}
 
@@ -430,16 +480,16 @@ class UserController extends PrimateController {
 	 */
 	static async initChat(req, res) {
 		const user = await UserController.validateMe(req);
-		if(!user) return res.respond({ status: 401, message: 'User not found or error fetching user' });
+		if (!user) return res.respond({status: 401, message: 'User not found or error fetching user'});
 
 		try {
 			// check if a chat exists for the user
-			let chat = await PrimateService.findBy('chat', { idUser: user.id });
-			if(!chat) chat = await PrimateService.create('chat', { idUser: user.id });
+			let chat = await PrimateService.findBy('chat', {idUser: user.id});
+			if (!chat) chat = await PrimateService.create('chat', {idUser: user.id});
 
 			// now create a thread for the chat or retrieve the existing thread
-			let thread = await PrimateService.findBy('thread', { idChat: chat.id });
-			if(!thread) thread = await PrimateService.create('thread', { idChat: chat.id, idUser: user.id });
+			let thread = await PrimateService.findBy('thread', {idChat: chat.id});
+			if (!thread) thread = await PrimateService.create('thread', {idChat: chat.id, idUser: user.id});
 
 			// now get all the messages for the thread
 			thread.messages = await PrimateService.all('message', {
@@ -460,9 +510,9 @@ class UserController extends PrimateController {
 				message: 'Chat initiated successfully',
 			});
 
-		} catch(e) {
+		} catch (e) {
 			console.error(e);
-			return res.respond({ status: 400, message: 'Error initiating chat: ' + e.message });
+			return res.respond({status: 400, message: 'Error initiating chat: ' + e.message});
 		}
 	}
 
@@ -481,19 +531,19 @@ class UserController extends PrimateController {
 	 */
 	static async updateAgent(req, res) {
 		const user = await UserController.validateMe(req);
-		if(!user) return res.respond({ status: 401, message: 'User not found or error fetching user' });
+		if (!user) return res.respond({status: 401, message: 'User not found or error fetching user'});
 
 		const idAgent = parseInt(req.params.idAgent);
-		if(!idAgent) return res.respond({ status: 400, message: 'No agent ID provided' });
-		if(!req.body) return res.respond({ status: 400, message: 'No data provided' });
+		if (!idAgent) return res.respond({status: 400, message: 'No agent ID provided'});
+		if (!req.body) return res.respond({status: 400, message: 'No data provided'});
 
 		try {
 			const agent = await UserService.updateAgent(user.id, idAgent, req.body);
-			return res.respond({ data: agent, message: 'Agent updated successfully' });
+			return res.respond({data: agent, message: 'Agent updated successfully'});
 
-		} catch(e) {
+		} catch (e) {
 			console.error(e);
-			return res.respond({ status: 400, message: 'Error updating agent: ' + e.message });
+			return res.respond({status: 400, message: 'Error updating agent: ' + e.message});
 		}
 	}
 
@@ -512,19 +562,19 @@ class UserController extends PrimateController {
 	 */
 	static async createEntity(req, res) {
 		const user = await UserController.validateMe(req);
-		if(!user) return res.respond({ status: 401, message: 'User not found or error fetching user' });
+		if (!user) return res.respond({status: 401, message: 'User not found or error fetching user'});
 
 		const idAgent = parseInt(req.params.idAgent);
-		if(!idAgent) return res.respond({ status: 400, message: 'No agent ID provided' });
-		if(!req.body) return res.respond({ status: 400, message: 'No data provided' });
+		if (!idAgent) return res.respond({status: 400, message: 'No agent ID provided'});
+		if (!req.body) return res.respond({status: 400, message: 'No data provided'});
 
 		try {
 			const entity = await UserService.createEntity(user.id, idAgent, req.body);
-			return res.respond({ data: entity, message: 'Entity created successfully' });
+			return res.respond({data: entity, message: 'Entity created successfully'});
 
-		} catch(e) {
+		} catch (e) {
 			console.error(e);
-			return res.respond({ status: 400, message: 'Error creating entity: ' + e.message });
+			return res.respond({status: 400, message: 'Error creating entity: ' + e.message});
 		}
 	}
 }
