@@ -5,10 +5,11 @@ import OpenAIService from '#services/openai.service.js';
 import aiPrompts from '#ai/prompts.js';
 import aiTools from '#ai/tools.js';
 
-import { StringDecoder } from 'string_decoder';
-import { Primate, PrimateService } from '@thewebchimp/primate';
+import {StringDecoder} from 'string_decoder';
+import {Primate, PrimateService} from '@thewebchimp/primate';
 import UserController from '#entities/users/user.controller.js';
 import MessageService from '#entities/messages/message.service.js';
+import FunctionService from "#services/function.service.js";
 
 /**
  * Enhanced AiController with support for all Gemini features including:
@@ -46,15 +47,15 @@ class AiController {
 			} = req.body;
 
 			// Validate input
-			if(!prompt) {
-				res.writeHead(400, { 'Content-Type': 'application/json' });
-				res.end(JSON.stringify({ error: 'No prompt provided' }));
+			if (!prompt) {
+				res.writeHead(400, {'Content-Type': 'application/json'});
+				res.end(JSON.stringify({error: 'No prompt provided'}));
 				return;
 			}
 
 			let sendSSE;
 
-			if(stream) {
+			if (stream) {
 				// Setup SSE connection
 				res.writeHead(200, {
 					'Content-Type': 'text/event-stream',
@@ -63,7 +64,7 @@ class AiController {
 				});
 
 				sendSSE = (data) => {
-					res.write(`data: ${ JSON.stringify(data) }\n\n`);
+					res.write(`data: ${JSON.stringify(data)}\n\n`);
 				};
 
 				// Handle client disconnection
@@ -114,14 +115,14 @@ class AiController {
 					searchConfig: provider.searchConfig,
 				});
 
-				if(stream) {
+				if (stream) {
 					await processStreamingResponse(
 						response.data,
 						provider.name,
 						buffers,
 						sendSSE,
 						() => {
-							sendSSE({ type: 'complete', message: 'Provider finished' });
+							sendSSE({type: 'complete', message: 'Provider finished'});
 							setTimeout(() => {
 								res.end();
 							}, 5000);
@@ -130,11 +131,11 @@ class AiController {
 				} else {
 
 					let preparedResponse = response.candidates[0].content.parts[0].text;
-					if(tools) preparedResponse = response.candidates[0].content.parts[0].functionCall;
+					if (tools) preparedResponse = response.candidates[0].content.parts[0].functionCall;
 
 					try {
-						if(responseSchema) preparedResponse = JSON.parse(response.candidates[0].content.parts[0].text);
-					} catch(e) {
+						if (responseSchema) preparedResponse = JSON.parse(response.candidates[0].content.parts[0].text);
+					} catch (e) {
 						console.error('Error parsing response schema:', e);
 						preparedResponse = response.candidates[0].content.parts[0].text;
 					}
@@ -144,15 +145,15 @@ class AiController {
 						message: 'Provider finished',
 					});
 				}
-			} catch(error) {
+			} catch (error) {
 				console.error(`Error from provider:`, error);
-				if(error.response) {
+				if (error.response) {
 					console.error('Error data:', error.response.data);
 					console.error('Error status:', error.response.status);
 					console.error('Error headers:', error.response.headers);
 				}
-				if(stream) {
-					sendSSE({ type: provider.name, error: error.message });
+				if (stream) {
+					sendSSE({type: provider.name, error: error.message});
 					res.end();
 				} else {
 					res.respond({
@@ -162,88 +163,129 @@ class AiController {
 				}
 			}
 
-		} catch(e) {
+		} catch (e) {
 			console.error('Error in message handler:', e);
-			res.write(`data: ${ JSON.stringify({ type: 'error', error: 'Internal server error' }) }\n\n`);
+			res.write(`data: ${JSON.stringify({type: 'error', error: 'Internal server error'})}\n\n`);
 			res.end();
 		}
 	}
 
 	static async paigeMessage(req, res) {
-
-		const user = await UserController.validateMe(req);
-		if(!user) return res.respond({ status: 401, error: 'Unauthorized' });
-
-		const { prompt, idChat, idThread, url, agent } = req.body;
-		if(!prompt) return res.respond({ status: 400, error: 'No prompt provided' });
-		if(!idChat) return res.respond({ status: 400, error: 'No chat ID provided' });
-		if(!idThread) return res.respond({ status: 400, error: 'No thread ID provided' });
-
-		// get message history
-		const { messages, context } = await MessageService.getHistory(idChat, idThread);
-
-		console.log('Messages:', messages);
-
-		// Create the message
-		await PrimateService.create('message', {
-			idUser: user.id,
-			idChat,
-			idThread,
-			role: 'user',
-			text: prompt,
-			metas: {
-				url,
-			},
-		});
-
-		OpenAIService.init();
-
-		res.writeHead(200, {
-			'Content-Type': 'text/event-stream',
-			'Cache-Control': 'no-cache',
-			'Connection': 'keep-alive',
-		});
-
-		//region Solve function ----------------------------------------------------------------------------------------
-
-		const calls = await OpenAIService.sendMessage({
-			system: `${ aiPrompts.personality }\n\n`,
-			prompt,
-			messages,
-			tools: aiTools,
-			toolChoice: 'required',
-		});
-
-		console.log('Calls:', calls);
-
-		// iterate calls and check if there is only one call with the name "chatResponse", if it is, delete it
-		if(calls.length === 1) {
-			const chatResponseIndex = calls.findIndex(call => call.name === 'chatResponse');
-			if(chatResponseIndex !== -1) {
-				calls.splice(chatResponseIndex, 1);
-			}
-		}
-
-		//endregion ----------------------------------------------------------------------------------------------------
-
-		let systemPrompt = `${ aiPrompts.personality }\n\n#Context:\n${ JSON.stringify(context) }\n\n`;
-
-		if(calls.length > 0 && agent) {
-			systemPrompt = `${ aiPrompts.personality }\n\n
-			#Agent current information:
-			\n${ JSON.stringify(agent) }\n\n
-			#Function calls:\n
-			${ calls.map(call => `- ${ call.name }: ${ JSON.stringify(call.arguments) }`).join('\n') }\n\n
-			Answer the user letting him know that you performed the function calls and the result of the operation.`;
-		}
-
-		console.log('System prompt:', systemPrompt);
-
-		for(const call of calls) {
-			res.write('json: ' + JSON.stringify(call) + '\n\n');
-		}
-
 		try {
+			const user = await UserController.validateMe(req);
+			if (!user) return res.respond({status: 401, error: 'Unauthorized'});
+
+			const {prompt, idChat, idThread, url, agent} = req.body;
+			if (!prompt) return res.respond({status: 400, error: 'No prompt provided'});
+			if (!idChat) return res.respond({status: 400, error: 'No chat ID provided'});
+			if (!idThread) return res.respond({status: 400, error: 'No thread ID provided'});
+
+			// Get message history
+			const {messages, context} = await MessageService.getHistory(idChat, idThread);
+			console.log('📨 Messages:', messages);
+			console.log('📝 Initial context:', context);
+
+			// Create the user message
+			await PrimateService.create('message', {
+				idUser: user.id,
+				idChat,
+				idThread,
+				role: 'user',
+				text: prompt,
+				metas: {
+					url,
+				},
+			});
+			console.log('✅ User message created');
+
+			OpenAIService.init();
+			console.log('🔄 OpenAI Service initialized');
+
+			res.writeHead(200, {
+				'Content-Type': 'text/event-stream',
+				'Cache-Control': 'no-cache',
+				'Connection': 'keep-alive',
+			});
+			console.log('📡 Response headers set');
+
+			// Get function calls
+			console.log('🚀 Sending message to OpenAI to get function calls...');
+			const calls = await OpenAIService.sendMessage({
+				system: `${aiPrompts.personality}\n\n`,
+				prompt,
+				messages,
+				tools: aiTools,
+				toolChoice: 'required',
+			});
+			console.log('🔧 Received function calls:', JSON.stringify(calls, null, 2));
+
+			// Remove 'chatResponse' if it's the only call
+			if (calls.length === 1) {
+				const chatResponseIndex = calls.findIndex((call) => call.name === 'chatResponse');
+				if (chatResponseIndex !== -1) {
+					calls.splice(chatResponseIndex, 1);
+					console.log('🗑️ Removed chatResponse as it was the only call');
+				}
+			}
+
+			// Execute function calls and collect results
+			const functionResults = {};
+			console.log('⚙️ Starting function execution...');
+			for (const call of calls) {
+				console.log(`🛠 Executing function: ${call.name}`);
+				console.log(`📥 Function arguments:`, JSON.stringify(call.args, null, 2));
+				try {
+					if (typeof FunctionService[call.name] === 'function') {
+						const result = await FunctionService[call.name](call.args);
+						functionResults[call.name] = result;
+						console.log(`✅ Result of ${call.name}:`, JSON.stringify(result, null, 2));
+					} else {
+						console.error(`❌ Function ${call.name} not found in FunctionService`);
+						functionResults[call.name] = {error: `Function ${call.name} not found`};
+					}
+				} catch (error) {
+					console.error(`⚠️ Error executing function ${call.name}:`, error);
+					functionResults[call.name] = {error: error.message};
+				}
+			}
+			console.log('📊 All function results:', JSON.stringify(functionResults, null, 2));
+
+			// Update system prompt with function results
+			let systemPrompt = `${aiPrompts.personality}\n\n#Context:\n${JSON.stringify(context)}\n\n`;
+
+			if (calls.length > 0) {
+				const functionResultsSection = Object.entries(functionResults)
+					.map(([functionName, result]) => `- ${functionName}: ${JSON.stringify(result)}`)
+					.join('\n');
+
+				if (agent) {
+					systemPrompt += `
+#Agent current information:
+${JSON.stringify(agent)}`;
+				}
+
+				systemPrompt += `
+#Function results:
+${functionResultsSection}
+
+Answer the user, letting them know the results of the operations.`;
+
+				console.log('🔄 Updated system prompt with function results:');
+				console.log(systemPrompt);
+			} else {
+				console.log('ℹ️ No function results to add to system prompt');
+			}
+
+			// Send function calls to the client
+			for (const call of calls) {
+				console.log('📤 Sending function call to client:', call);
+				res.write('json: ' + JSON.stringify(call) + '\n\n');
+			}
+
+			// Send final response from assistant
+			console.log('💬 Sending message to OpenAI to get final response...');
+			console.log('📝 Final system prompt being sent:', systemPrompt);
+
 			const response = await OpenAIService.sendMessage({
 				system: systemPrompt,
 				messages,
@@ -253,33 +295,39 @@ class AiController {
 
 			let message = '';
 
-			if(response && typeof response[Symbol.asyncIterator] === 'function') {
+			if (response && typeof response[Symbol.asyncIterator] === 'function') {
+				console.log('📨 Starting to stream response...');
 				for await (const part of response) {
 					const content = part.choices[0].delta?.content || '';
-					if(content) {
-						res.write(`data: ${ content }\n\n`);
+					if (content) {
+						res.write(`data: ${content}\n\n`);
 						message += content;
 					}
 				}
+				console.log('📝 Full assistant response:', message);
 				res.write('data: [DONE]\n\n');
 
-				//region Store message with context --------------------------------------------------------------------
+				// Store the assistant's message and update context
+				console.log('💾 Generating new context...');
 
 				const contextResponse = await OpenAIService.sendMessage({
-					system: `${ aiPrompts.personality }\n\n
-					Return a json object with information to remember from the conversation based on the user input.\n
-					Only store information if the message contains something meaningful, not trivial responses.\n
-					Try to maintain everything as a key-value, with just one level of values in the json.\n
-					Avoid creating new keys if the information is already present in the context.\n
-					If there is an addition to an existing key, append the new information to the existing value, maybe with commas.\n
-					Use the last json context and append the new information.`,
-					messages: [ {
-						role: 'assistant',
-						content: JSON.stringify(context),
-					} ],
+					system: `${aiPrompts.personality}\n\n
+Return a JSON object with information to remember from the conversation based on the user input.
+Only store information if the message contains something meaningful, not trivial responses.
+Try to maintain everything as a key-value, with just one level of values in the JSON.
+Avoid creating new keys if the information is already present in the context.
+If there is an addition to an existing key, append the new information to the existing value, maybe with commas.
+Use the last JSON context and append the new information.`,
+					messages: [
+						{
+							role: 'assistant',
+							content: JSON.stringify(context),
+						},
+					],
 					responseFormat: 'json',
 					prompt,
 				});
+				console.log('📦 New context generated:', JSON.stringify(contextResponse, null, 2));
 
 				await PrimateService.create('message', {
 					idUser: user.id,
@@ -289,25 +337,22 @@ class AiController {
 					text: message,
 					metas: {
 						url,
-						context: { ...context, ...contextResponse },
+						context: {...context, ...contextResponse},
 					},
 				});
-
-				//endregion --------------------------------------------------------------------------------------------
+				console.log('✅ Assistant message stored successfully');
 
 				res.end();
 			} else {
-				console.error('Response is not an async iterable');
-				res.write(`data: ${ JSON.stringify({ error: 'Streaming not supported' }) }\n\n`);
+				console.error('❌ Response is not an async iterable');
+				res.write(`data: ${JSON.stringify({error: 'Streaming not supported'})}\n\n`);
 				res.end();
 			}
-
-		} catch(error) {
-			console.error(`Error from provider:`, error);
-			/*res.respond({
-				status: 500,
-				error: error.message,
-			});*/
+		} catch (error) {
+			console.error(`❌ Error in paigeMessage:`, error);
+			console.error('📚 Error stack:', error.stack);
+			res.write(`data: Error: ${error.message}\n\n`);
+			res.end();
 		}
 	}
 }
@@ -324,7 +369,7 @@ async function processStreamingResponse(stream, provider, buffers, sendSSE, onCo
 			const lines = chunkStr.split('\n');
 
 			lines.forEach(line => {
-				if(line !== '') {
+				if (line !== '') {
 					processLine(line, provider, buffers, sendSSE);
 				}
 			});
@@ -333,10 +378,10 @@ async function processStreamingResponse(stream, provider, buffers, sendSSE, onCo
 		stream.on('end', () => {
 			// Handle any remaining characters
 			const remaining = decoder.end();
-			if(remaining) {
+			if (remaining) {
 				const lines = remaining.split('\n');
 				lines.forEach(line => {
-					if(line !== '') {
+					if (line !== '') {
 						processLine(line, provider, buffers, sendSSE);
 					}
 				});
@@ -346,7 +391,7 @@ async function processStreamingResponse(stream, provider, buffers, sendSSE, onCo
 		});
 
 		stream.on('error', (error) => {
-			sendSSE({ type: provider, error: error.message });
+			sendSSE({type: provider, error: error.message});
 			onComplete();
 			reject(error);
 		});
@@ -357,23 +402,23 @@ async function processStreamingResponse(stream, provider, buffers, sendSSE, onCo
  * Process individual line from stream
  */
 function processLine(line, provider, buffers, sendSSE) {
-	if(provider === 'google') {
+	if (provider === 'google') {
 		buffers.google += line;
 
 		let extracted;
-		while((extracted = extractJSONObject(buffers.google)) !== null) {
-			const { jsonStr, remaining } = extracted;
+		while ((extracted = extractJSONObject(buffers.google)) !== null) {
+			const {jsonStr, remaining} = extracted;
 			buffers.google = remaining;
 
 			try {
 				const data = JSON.parse(jsonStr);
 				const content = extractContent(data);
 
-				if(content) {
-					sendSSE({ type: provider, data: { content } });
+				if (content) {
+					sendSSE({type: provider, data: {content}});
 				}
-			} catch(error) {
-				console.error(`Error parsing ${ provider } SSE data:`, error);
+			} catch (error) {
+				console.error(`Error parsing ${provider} SSE data:`, error);
 			}
 		}
 	}
@@ -388,31 +433,31 @@ function extractJSONObject(buffer) {
 	let escape = false;
 	let start = -1;
 
-	for(let i = 0; i < buffer.length; i++) {
+	for (let i = 0; i < buffer.length; i++) {
 		const char = buffer[i];
 
-		if(inString) {
-			if(escape) {
+		if (inString) {
+			if (escape) {
 				escape = false;
-			} else if(char === '\\') {
+			} else if (char === '\\') {
 				escape = true;
-			} else if(char === '"') {
+			} else if (char === '"') {
 				inString = false;
 			}
 			continue;
 		}
 
-		if(char === '"') {
+		if (char === '"') {
 			inString = true;
 			continue;
 		}
 
-		if(char === '{') {
-			if(braceCount === 0) start = i;
+		if (char === '{') {
+			if (braceCount === 0) start = i;
 			braceCount++;
-		} else if(char === '}') {
+		} else if (char === '}') {
 			braceCount--;
-			if(braceCount === 0 && start !== -1) {
+			if (braceCount === 0 && start !== -1) {
 				return {
 					jsonStr: buffer.substring(start, i + 1),
 					remaining: buffer.substring(i + 1),
@@ -428,7 +473,7 @@ function extractJSONObject(buffer) {
  * Extract content from parsed data
  */
 function extractContent(data) {
-	if(data.candidates?.[0]?.content?.parts?.[0]?.text) {
+	if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
 		return data.candidates[0].content.parts[0].text;
 	}
 	return '';

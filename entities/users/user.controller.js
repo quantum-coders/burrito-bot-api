@@ -409,6 +409,55 @@ class UserController extends PrimateController {
 		return user;
 	}
 
+	// In UserController.js
+
+	static async getChat(req, res) {
+		const user = await UserController.validateMe(req);
+		if (!user) {
+			return res.respond({status: 401, message: 'User not found or error fetching user'});
+		}
+
+		try {
+			const idChat = req.params.idChat;
+			console.log('Received idChat:', idChat);
+
+			if (!idChat) {
+				return res.respond({status: 400, message: 'No chat ID provided'});
+			}
+
+			// Buscar el chat por UID en lugar de ID numérico
+			const chat = await PrimateService.findBy('chat', {uid: idChat, idUser: user.id});
+			if (!chat) {
+				return res.respond({status: 404, message: 'Chat not found'});
+			}
+
+			// Buscar el thread asociado al chat
+			const thread = await PrimateService.findBy('thread', {idChat: chat.id});
+			if (!thread) {
+				return res.respond({status: 404, message: 'Thread not found'});
+			}
+
+			// Obtener todos los mensajes del thread
+			const messagesResult = await PrimateService.all('message', {idThread: thread.id});
+			thread.messages = messagesResult.data;
+
+			// Ordenar los mensajes del más antiguo al más reciente
+			thread.messages.sort((a, b) => new Date(a.created) - new Date(b.created));
+
+			return res.respond({
+				data: {
+					chat,
+					thread,
+				},
+				message: 'Chat retrieved successfully',
+			});
+
+		} catch (e) {
+			console.error(e);
+			return res.respond({status: 400, message: 'Error retrieving chat: ' + e.message});
+		}
+	}
+
 	/**
 	 * Creates a new agent associated with a user by their ID.
 	 *
@@ -483,24 +532,14 @@ class UserController extends PrimateController {
 		if (!user) return res.respond({status: 401, message: 'User not found or error fetching user'});
 
 		try {
-			// check if a chat exists for the user
-			let chat = await PrimateService.findBy('chat', {idUser: user.id});
-			if (!chat) chat = await PrimateService.create('chat', {idUser: user.id});
+			// Siempre crear un nuevo chat
+			const chat = await PrimateService.create('chat', {idUser: user.id});
 
-			// now create a thread for the chat or retrieve the existing thread
-			let thread = await PrimateService.findBy('thread', {idChat: chat.id});
-			if (!thread) thread = await PrimateService.create('thread', {idChat: chat.id, idUser: user.id});
+			// Crear un nuevo thread para el chat
+			const thread = await PrimateService.create('thread', {idChat: chat.id, idUser: user.id});
 
-			// now get all the messages for the thread
-			thread.messages = await PrimateService.all('message', {
-				idThread: thread.id,
-				idChat: chat.id,
-				idUser: user.id,
-			});
-			thread.messages = thread.messages.data;
-
-			// reordering messages from oldest to newest
-			thread.messages.sort((a, b) => new Date(a.created) - new Date(b.created));
+			// Inicializar mensajes vacíos para el nuevo thread
+			thread.messages = [];
 
 			return res.respond({
 				data: {
@@ -515,6 +554,7 @@ class UserController extends PrimateController {
 			return res.respond({status: 400, message: 'Error initiating chat: ' + e.message});
 		}
 	}
+
 
 	/**
 	 * Updates a specific agent associated with the authenticated user by agent ID.
@@ -577,6 +617,28 @@ class UserController extends PrimateController {
 			return res.respond({status: 400, message: 'Error creating entity: ' + e.message});
 		}
 	}
+
+	// user.controller.js
+
+	static async getChats(req, res) {
+		const user = await UserController.validateMe(req)
+		if (!user) return res.respond({status: 401, message: 'User not found or error fetching user'})
+
+		try {
+			// Obtener todos los chats del usuario
+			const chatsResult = await PrimateService.all('chat', {idUser: user.id})
+			const chats = chatsResult.data
+
+			return res.respond({
+				data: {chats},
+				message: 'Chats retrieved successfully',
+			})
+		} catch (e) {
+			console.error(e)
+			return res.respond({status: 400, message: 'Error retrieving chats: ' + e.message})
+		}
+	}
+
 }
 
 export default UserController;

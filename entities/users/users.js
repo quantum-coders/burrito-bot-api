@@ -19,6 +19,10 @@ router.get('/:id/avatar', UserController.avatar);
 // init a chat
 router.post('/:id/chat', auth, UserController.initChat);
 router.post('/authenticate', UserController.authenticate);
+// In your router file
+router.get('/me/chats', auth, UserController.getChats)
+
+router.get('/chat/:idChat', auth, UserController.getChat);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
