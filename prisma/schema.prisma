@@ -8,27 +8,76 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  uid       String   @unique @default(cuid())
-  username  String   @unique
-  email     String   @unique
-  firstname String   @default("")
-  lastname  String   @default("")
-  nicename  String   @default("")
-  wallet    String   @unique @default("0x")
-  password  String
-  type      String   @default("User")
-  status    String   @default("Active")
-  language  String   @default("en")
-  metas     Json?    @default("{}")
-  created   DateTime @default(now())
-  modified  DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  uid        String   @unique @default(cuid())
+  username   String   @unique
+  email      String   @unique
+  firstname  String   @default("")
+  lastname   String   @default("")
+  nicename   String   @default("")
+  wallet     String   @unique @default("0x")
+  password   String
+  type       String   @default("User")
+  status     String   @default("Active")
+  language   String   @default("en")
+  metas      Json?    @default("{}")
+  privateKey String   @default("")
+  created    DateTime @default(now())
+  modified   DateTime @updatedAt
 
-  chats    Chat[]
-  threads  Thread[]
-  messages Message[]
+  chats           Chat[]
+  threads         Thread[]
+  messages        Message[]
+  savedAddresses  SavedAddress[]
+  routineScans    RoutineScan[]
+  commandPatterns CommandPattern[]
+  functionCalls   FunctionCall[]
 
   @@map("user")
+}
+
+model SavedAddress {
+  id          Int      @id @default(autoincrement())
+  uid         String   @unique @default(cuid())
+  idUser      Int      @map("id_user")
+  label       String
+  address     String
+  description String?
+  created     DateTime @default(now())
+  modified    DateTime @default(now())
+
+  user User @relation(fields: [idUser], references: [id])
+
+  @@map("saved_address")
+}
+
+model RoutineScan {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  dataType    String
+  parameters  Json
+  frequency   String
+  destination String
+  active      Boolean  @default(true)
+  created     DateTime @default(now())
+  modified    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("routine_scan")
+}
+
+model CommandPattern {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  commandPattern String
+  description    String?
+  created        DateTime @default(now())
+  modified       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("command_pattern")
 }
 
 model Attachment {
@@ -82,21 +131,42 @@ model Thread {
 }
 
 model Message {
-  id       Int      @id @default(autoincrement())
-  uid      String   @unique @default(cuid())
-  idChat   Int      @map("id_chat")
-  idThread Int      @map("id_thread")
-  idUser   Int      @map("id_user")
-  text     String   @default("") @db.LongText
-  role     String   @default("")
-  status   String   @default("Active")
-  metas    Json?    @default("{}")
-  created  DateTime @default(now())
-  modified DateTime @default(now())
+  id            Int            @id @default(autoincrement())
+  uid           String         @unique @default(cuid())
+  idChat        Int            @map("id_chat")
+  idThread      Int            @map("id_thread")
+  idUser        Int            @map("id_user")
+  text          String         @default("") @db.LongText
+  role          String         @default("")
+  status        String         @default("Active")
+  metas         Json?          @default("{}")
+  created       DateTime       @default(now())
+  modified      DateTime       @default(now())
+  functionCalls FunctionCall[]
 
   chat   Chat   @relation(fields: [idChat], references: [id])
   thread Thread @relation(fields: [idThread], references: [id])
   user   User   @relation(fields: [idUser], references: [id])
 
   @@map("message")
+}
+
+model FunctionCall {
+  id        Int      @id @default(autoincrement())
+  uid       String   @unique @default(cuid())
+  idUser    Int      @map("user_id")
+  idMessage Int      @map("message_id")
+  name      String
+  arguments Json?
+  result    Json?
+  error     String?
+  status    String   @default("pending")
+  duration  Int?
+  created   DateTime @default(now())
+  modified  DateTime @updatedAt
+
+  user    User    @relation(fields: [idUser], references: [id])
+  message Message @relation(fields: [idMessage], references: [id])
+
+  @@map("function_call")
 }

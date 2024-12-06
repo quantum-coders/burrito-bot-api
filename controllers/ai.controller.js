@@ -186,7 +186,7 @@ class AiController {
 			console.log('📝 Initial context:', context);
 
 			// Create the user message
-			await PrimateService.create('message', {
+			const userMessage = await PrimateService.create('message', {
 				idUser: user.id,
 				idChat,
 				idThread,
@@ -231,26 +231,65 @@ class AiController {
 			// Execute function calls and collect results
 			const functionResults = {};
 			console.log('⚙️ Starting function execution...');
+
 			for (const call of calls) {
+				const startTime = Date.now();
 				console.log(`🛠 Executing function: ${call.name}`);
 				console.log(`📥 Function arguments:`, JSON.stringify(call.args, null, 2));
+
 				try {
+					let result;
+					let status = 'pending';
+					let error = null;
+
 					if (typeof FunctionService[call.name] === 'function') {
-						const result = await FunctionService[call.name](call.args);
+						result = await FunctionService[call.name](user.id, call.args);
 						functionResults[call.name] = result;
+						status = 'completed';
 						console.log(`✅ Result of ${call.name}:`, JSON.stringify(result, null, 2));
 					} else {
 						console.error(`❌ Function ${call.name} not found in FunctionService`);
-						functionResults[call.name] = {error: `Function ${call.name} not found`};
+						error = `Function ${call.name} not found`;
+						functionResults[call.name] = {error};
+						status = 'error';
 					}
+
+					const duration = Date.now() - startTime;
+
+					// Guardar la function call en la base de datos
+					await PrimateService.create('functionCall', {
+						idUser: user.id,
+						idMessage: userMessage.id,
+						name: call.name,
+						arguments: call.args,
+						result: result || null,
+						error: error,
+						status: status,
+						duration: duration
+					});
+
 				} catch (error) {
 					console.error(`⚠️ Error executing function ${call.name}:`, error);
 					functionResults[call.name] = {error: error.message};
+
+					const duration = Date.now() - startTime;
+
+					// Guardar la function call fallida en la base de datos
+					await PrimateService.create('functionCall', {
+						idUser: user.id,
+						idMessage: userMessage.id,
+						name: call.name,
+						arguments: call.args,
+						result: null,
+						error: error.message,
+						status: 'error',
+						duration: duration
+					});
 				}
 			}
 			console.log('📊 All function results:', JSON.stringify(functionResults, null, 2));
 
-			// Update system prompt with function results
+			// Rest of the code remains the same...
 			let systemPrompt = `${aiPrompts.personality}\n\n#Context:\n${JSON.stringify(context)}\n\n`;
 
 			if (calls.length > 0) {

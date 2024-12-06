@@ -438,8 +438,32 @@ class UserController extends PrimateController {
 			}
 
 			// Obtener todos los mensajes del thread
-			const messagesResult = await PrimateService.all('message', {idThread: thread.id});
-			thread.messages = messagesResult.data;
+			const messagesResult = await primate.prisma.message.findMany({
+				where: {
+					idThread: thread.id,
+				},
+				include: {
+					functionCalls: {
+						select: {
+							id: true,
+							name: true,
+							arguments: true,
+							result: true,
+							error: true,
+							status: true,
+							duration: true,
+							created: true,
+						}
+					}
+				},
+				orderBy: {
+					created: 'asc'
+				}
+			});
+
+			console.log('Messages------------------------>:', messagesResult);
+
+			thread.messages = messagesResult
 
 			// Ordenar los mensajes del más antiguo al más reciente
 			thread.messages.sort((a, b) => new Date(a.created) - new Date(b.created));

@@ -1,268 +1,334 @@
 export default {
-  // Existing functions
-  setAgentName: {
-    name: 'setAgentName',
-    description:
-      'Sets the name of the agent. If the user provides a name directly, use it; otherwise, invent one.',
-    parameters: {
-      type: 'object',
-      properties: {
-        name: {
-          type: 'string',
-          description: 'The new name for the agent.',
-        },
-      },
-      required: ['name'],
-    },
-  },
-  setAgentDescription: {
-    name: 'setAgentDescription',
-    description:
-      'Sets the description of the agent. If the user provides a description directly, use it; otherwise, invent one.',
-    parameters: {
-      type: 'object',
-      properties: {
-        description: {
-          type: 'string',
-          description: 'The new description for the agent.',
-        },
-      },
-      required: ['description'],
-    },
-  },
-  chatResponse: {
-    name: 'chatResponse',
-    description: 'Function that tells the system to call a streaming message.',
-    parameters: {
-      type: 'object',
-      properties: {
-        originalPrompt: {
-          type: 'string',
-          description: 'The original prompt from the user.',
-        },
-      },
-      required: ['originalPrompt'],
-    },
-  },
-  updateAgent: {
-    name: 'updateAgent',
-    description: 'Sends the signal to update the agent.',
-    parameters: {
-      type: 'object',
-      properties: {},
-    },
-    required: [],
-  },
-  addEntity: {
-    name: 'addEntity',
-    description: 'Adds a new entity to the agent.',
-    parameters: {
-      type: 'object',
-      properties: {
-        name: {
-          type: 'string',
-          description: 'The name of the new entity.',
-        },
-        description: {
-          type: 'string',
-          description: 'A description of the new entity.',
-        },
-      },
-      required: ['name', 'description'],
-    },
-  },
-  // New blockchain-related functions
-  getPrice: {
-    name: 'getPrice',
-    description: 'Fetches the price of a cryptocurrency pair from Chainlink data feeds.',
-    parameters: {
-      type: 'object',
-      properties: {
-        baseToken: {
-          type: 'string',
-          description: 'The symbol of the base token (e.g., "ETH", "BTC").',
-        },
-        quoteToken: {
-          type: 'string',
-          description: 'The symbol of the quote token (default is "USD").',
-          default: 'USD',
-        },
-      },
-      required: ['baseToken'],
-    },
-  },
-  getAvaxBalance: {
-    name: 'getAvaxBalance',
-    description: 'Retrieves the AVAX balance of a given blockchain address.',
-    parameters: {
-      type: 'object',
-      properties: {
-        address: {
-          type: 'string',
-          description: 'The blockchain address to retrieve the balance for.',
-        },
-      },
-      required: ['address'],
-    },
-  },
-  getTokenBalance: {
-    name: 'getTokenBalance',
-    description: 'Retrieves the balance of a specific ERC20 token for a given address.',
-    parameters: {
-      type: 'object',
-      properties: {
-        tokenAddress: {
-          type: 'string',
-          description: 'The contract address of the ERC20 token.',
-        },
-        address: {
-          type: 'string',
-          description: 'The blockchain address to retrieve the token balance for.',
-        },
-      },
-      required: ['tokenAddress', 'address'],
-    },
-  },
-  getAvaxUsdPrice: {
-    name: 'getAvaxUsdPrice',
-    description: 'Retrieves the current AVAX to USD price from Chainlink data feeds.',
-    parameters: {
-      type: 'object',
-      properties: {},
-    },
-    required: [],
-  },
-  getRecentTransfers: {
-    name: 'getRecentTransfers',
-    description: 'Gets recent transfers of a token on the Avalanche network.',
-    parameters: {
-      type: 'object',
-      properties: {
-        tokenAddress: {
-          type: 'string',
-          description: 'The contract address of the token.',
-        },
-        blockCount: {
-          type: 'integer',
-          description: 'The number of recent blocks to search (default is 1000).',
-          default: 1000,
-        },
-      },
-      required: ['tokenAddress'],
-    },
-  },
-  getTransactionHistory: {
-    name: 'getTransactionHistory',
-    description: 'Retrieves the transaction history for a given blockchain address.',
-    parameters: {
-      type: 'object',
-      properties: {
-        address: {
-          type: 'string',
-          description: 'The blockchain address to get the transaction history for.',
-        },
-        startBlock: {
-          type: 'integer',
-          description: 'The starting block number to fetch transactions from (default is 0).',
-          default: 0,
-        },
-        endBlock: {
-          type: 'string',
-          description: 'The ending block number to fetch transactions up to (default is "latest").',
-          default: 'latest',
-        },
-      },
-      required: ['address'],
-    },
-  },
-  getLatestPrices: {
-    name: 'getLatestPrices',
-    description: 'Fetches the latest AVAX/WETH prices from different decentralized exchanges.',
-    parameters: {
-      type: 'object',
-      properties: {},
-    },
-    required: [],
-  },
-  getBlockNumber: {
-    name: 'getBlockNumber',
-    description: 'Retrieves the current block number of the Avalanche network.',
-    parameters: {
-      type: 'object',
-      properties: {},
-    },
-    required: [],
-  },
-  getAmountsOut: {
-    name: 'getAmountsOut',
-    description:
-      'Calculates the output amount of tokens for a given input amount on a specific exchange.',
-    parameters: {
-      type: 'object',
-      properties: {
-        tokenInAddress: {
-          type: 'string',
-          description: 'The contract address of the input token.',
-        },
-        tokenOutAddress: {
-          type: 'string',
-          description: 'The contract address of the output token.',
-        },
-        amountIn: {
-          type: 'number',
-          description: 'The amount of input tokens.',
-        },
-        exchange: {
-          type: 'string',
-          description: 'The name of the exchange.',
-          enum: ['sushi', 'trader-joe', 'pangolin'],
-        },
-      },
-      required: ['tokenInAddress', 'tokenOutAddress', 'amountIn', 'exchange'],
-    },
-  },
-  // Additional functions as needed
-  getBlockInformation: {
-    name: 'getBlockInformation',
-    description: 'Retrieves information about a specific block on the Avalanche network.',
-    parameters: {
-      type: 'object',
-      properties: {
-        blockNumber: {
-          type: 'string',
-          description: 'The block number to fetch information for (default is "latest").',
-          default: 'latest',
-        },
-      },
-      required: [],
-    },
-  },
-  isSupportedPair: {
-    name: 'isSupportedPair',
-    description: 'Checks if a given token pair is supported by Chainlink feeds.',
-    parameters: {
-      type: 'object',
-      properties: {
-        baseToken: {
-          type: 'string',
-          description: 'The symbol of the base token.',
-        },
-        quoteToken: {
-          type: 'string',
-          description: 'The symbol of the quote token (default is "USD").',
-          default: 'USD',
-        },
-      },
-      required: ['baseToken'],
-    },
-  },
-  getAllSupportedPairs: {
-    name: 'getAllSupportedPairs',
-    description: 'Retrieves all token pairs supported by Chainlink feeds.',
-    parameters: {
-      type: 'object',
-      properties: {},
-    },
-    required: [],
-  },
+	// -------------------------------
+	// Funciones Principales
+	// -------------------------------
+	chatResponse: {
+		name: 'chatResponse',
+		description: 'Función que indica al sistema que llame a un mensaje de streaming.',
+		parameters: {
+			type: 'object',
+			properties: {
+				originalPrompt: {
+					type: 'string',
+					description: 'El prompt original del usuario.',
+				},
+			},
+			required: ['originalPrompt'],
+		},
+	},
+	updateAgent: {
+		name: 'updateAgent',
+		description: 'Envía la señal para actualizar el agente.',
+		parameters: {
+			type: 'object',
+			properties: {},
+			required: [],
+		},
+	},
+	addEntity: {
+		name: 'addEntity',
+		description: 'Agrega una nueva entidad al agente.',
+		parameters: {
+			type: 'object',
+			properties: {
+				name: {
+					type: 'string',
+					description: 'El nombre de la nueva entidad.',
+				},
+				description: {
+					type: 'string',
+					description: 'Una descripción de la nueva entidad.',
+				},
+			},
+			required: ['name', 'description'],
+		},
+	},
+	// -------------------------------
+	// Funciones de Precios de Chainlink
+	// -------------------------------
+	getEthUsdPrice: {
+		name: 'getEthUsdPrice',
+		description: 'Obtiene el precio de ETH a USD desde los data feeds de Chainlink.',
+		parameters: {
+			type: 'object',
+			properties: {},
+			required: [],
+		},
+	},
+	getBtcUsdPrice: {
+		name: 'getBtcUsdPrice',
+		description: 'Obtiene el precio de BTC a USD desde los data feeds de Chainlink.',
+		parameters: {
+			type: 'object',
+			properties: {},
+			required: [],
+		},
+	},
+	getAvaxUsdPrice: {
+		name: 'getAvaxUsdPrice',
+		description: 'Obtiene el precio de AVAX a USD desde los data feeds de Chainlink.',
+		parameters: {
+			type: 'object',
+			properties: {},
+			required: [],
+		},
+	},
+	getLinkUsdPrice: {
+		name: 'getLinkUsdPrice',
+		description: 'Obtiene el precio de LINK a USD desde los data feeds de Chainlink.',
+		parameters: {
+			type: 'object',
+			properties: {},
+			required: [],
+		},
+	},
+	getDaiUsdPrice: {
+		name: 'getDaiUsdPrice',
+		description: 'Obtiene el precio de DAI a USD desde los data feeds de Chainlink.',
+		parameters: {
+			type: 'object',
+			properties: {},
+			required: [],
+		},
+	},
+	getAllSupportedPairs: {
+		name: 'getAllSupportedPairs',
+		description: 'Obtiene todos los pares soportados de los data feeds de Chainlink.',
+		parameters: {
+			type: 'object',
+			properties: {},
+			required: [],
+		},
+	},
+	isSupportedPair: {
+		name: 'isSupportedPair',
+		description: 'Verifica si un par dado es soportado por Chainlink.',
+		parameters: {
+			type: 'object',
+			properties: {
+				baseToken: {
+					type: 'string',
+					description: 'Token base (ej. "ETH").',
+				},
+				quoteToken: {
+					type: 'string',
+					description: 'Token de cotización (ej. "USD").',
+					default: 'USD',
+				},
+			},
+			required: ['baseToken'],
+		},
+	},
+	getPrice: {
+		name: 'getPrice',
+		description: 'Obtiene el precio de un par específico de criptomonedas.',
+		parameters: {
+			type: 'object',
+			properties: {
+				baseToken: {
+					type: 'string',
+					description: 'Token base.',
+				},
+				quoteToken: {
+					type: 'string',
+					description: 'Token de cotización.',
+					default: 'USD',
+				},
+			},
+			required: ['baseToken'],
+		},
+	},
+	// -------------------------------
+	// Funciones Relacionadas con Balances y Transacciones en la Red Avalanche
+	// -------------------------------
+	getAvaxBalance: {
+		name: 'getAvaxBalance',
+		description: 'Recupera el saldo de AVAX de una dirección blockchain dada.',
+		parameters: {
+			type: 'object',
+			properties: {
+				address: {
+					type: 'string',
+					description: 'La dirección blockchain para la cual se recupera el saldo.',
+				},
+			},
+			required: ['address'],
+		},
+	},
+	getTokenBalance: {
+		name: 'getTokenBalance',
+		description: 'Recupera el saldo de un token ERC20 específico para una dirección dada.',
+		parameters: {
+			type: 'object',
+			properties: {
+				tokenAddress: {
+					type: 'string',
+					description: 'La dirección del contrato del token ERC20.',
+				},
+				address: {
+					type: 'string',
+					description: 'La dirección blockchain para la cual se recupera el saldo del token.',
+				},
+			},
+			required: ['tokenAddress', 'address'],
+		},
+	},
+	getRecentTransfers: {
+		name: 'getRecentTransfers',
+		description: 'Obtiene transferencias recientes de un token en la red Avalanche.',
+		parameters: {
+			type: 'object',
+			properties: {
+				tokenAddress: {
+					type: 'string',
+					description: 'La dirección del contrato del token.',
+				},
+				blockCount: {
+					type: 'integer',
+					description: 'El número de bloques recientes para buscar (por defecto es 1000).',
+					default: 1000,
+				},
+			},
+			required: ['tokenAddress'],
+		},
+	},
+	getTransactionHistory: {
+		name: 'getTransactionHistory',
+		description: 'Recupera el historial de transacciones para una dirección blockchain dada.',
+		parameters: {
+			type: 'object',
+			properties: {
+				address: {
+					type: 'string',
+					description: 'La dirección blockchain para la cual se obtiene el historial de transacciones.',
+				},
+				startBlock: {
+					type: 'integer',
+					description: 'El número de bloque inicial para obtener transacciones (por defecto es 0).',
+					default: 0,
+				},
+				endBlock: {
+					type: 'string',
+					description: 'El número de bloque final para obtener transacciones hasta (por defecto es "latest").',
+					default: 'latest',
+				},
+			},
+			required: ['address'],
+		},
+	},
+	// -------------------------------
+	// Funciones para Manejo del Estado de Conversación
+	// -------------------------------
+	manageConversationState: {
+		name: 'manageConversationState',
+		description: 'Maneja el estado de la conversación para mantener el contexto.',
+		parameters: {
+			type: 'object',
+			properties: {
+				userId: {
+					type: 'string',
+					description: 'ID del usuario.',
+				},
+				stateData: {
+					type: 'object',
+					description: 'Datos del estado de la conversación.',
+				},
+			},
+			required: ['userId', 'stateData'],
+		},
+	},
+	updateConversationState: {
+		name: 'updateConversationState',
+		description: 'Actualiza el estado de la conversación del usuario.',
+		parameters: {
+			type: 'object',
+			properties: {
+				conversationState: {
+					type: 'string',
+					description: 'Nuevo estado de la conversación.',
+				},
+			},
+			required: ['conversationState'],
+		},
+	},
+	getConversationState: {
+		name: 'getConversationState',
+		description: 'Obtiene el estado actual de la conversación del usuario.',
+		parameters: {
+			type: 'object',
+			properties: {
+				userId: {
+					type: 'string',
+					description: 'ID del usuario.',
+				},
+			},
+			required: ['userId'],
+		},
+	},
+	// -------------------------------
+	// Funciones de Gestión de Preferencias
+	// -------------------------------
+	setUserPreference: {
+		name: 'setUserPreference',
+		description: 'Almacena una preferencia del usuario.',
+		parameters: {
+			type: 'object',
+			properties: {
+				key: {
+					type: 'string',
+					description: 'Clave de la preferencia.',
+				},
+				value: {
+					oneOf: [
+						{type: 'string'},
+						{type: 'number'},
+						{type: 'boolean'},
+						{type: 'object'},
+						{
+							type: 'array',
+							items: {type: 'string'} // Cambia "string" según el tipo de elementos esperados
+						}
+					],
+					description: 'Valor de la preferencia. Puede ser una cadena, número, booleano, objeto o arreglo.',
+				},
+			},
+			required: ['key', 'value'],
+		},
+	},
+
+	getUserPreferences: {
+		name: 'getUserPreferences',
+		description: 'Recupera las preferencias del usuario.',
+		parameters: {
+			type: 'object',
+			properties: {
+				userId: {
+					type: 'string',
+					description: 'ID del usuario.',
+				},
+			},
+			required: ['userId'],
+		},
+	},
+	// -------------------------------
+	// Manejo de Notificaciones
+	// -------------------------------
+	sendTelegramNotification: {
+		name: 'sendTelegramNotification',
+		description: 'Envía una notificación al usuario vía Telegram.',
+		parameters: {
+			type: 'object',
+			properties: {
+				message: {
+					type: 'string',
+					description: 'El mensaje a enviar.',
+				},
+				chatId: {
+					type: 'string',
+					description: 'El ID del chat de Telegram del usuario.',
+				},
+			},
+			required: ['message', 'chatId'],
+		},
+	},
 };
